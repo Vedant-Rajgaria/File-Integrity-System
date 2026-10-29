@@ -1,6 +1,8 @@
 import hashlib
 import os
 import sqlite3
+import subprocess
+import base64
 
 lookup = "file_tracker.db"
 
@@ -28,6 +30,11 @@ def integrityCheck(file_path,expectedHash ):
     print("File Secure") if hashed(file_path) == expectedHash else print ("File Integrity is compromised")
 
 def registerFile(file_path):
+
+    if not windows_hello_auth(f"Authorize baseline update for {os.path.basename(file_path)}"):
+        print("[Denied] Windows Hello authentication failed or cancelled.")
+        return
+
     with sqlite3.connect(lookup) as conn:
             cursor = conn.cursor()
             cursor.execute('''
@@ -37,8 +44,27 @@ def registerFile(file_path):
             conn.commit()
 
 def FilePath(file):
-    file_path = file if os.path.isabs(file) else file_path = os.path.abspath(file) #alternative: path().resolve()
+    file_path = file if os.path.isabs(file) else os.path.abspath(file) #alternative: path().resolve()
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"The file '{file_path}' could not be found.")
     
     return file_path 
+
+def windows_hello_auth(prompt="Authorize Baseline Update") -> bool:
+    ps_cmd = f"""
+Add-Type -AssemblyName System.Runtime.WindowsRuntime
+$null = [Windows.Security.Credentials.UI.UserConsentVerifier,Windows.Security.Credentials.UI,ContentType=WindowsRuntime]
+$op = [Windows.Security.Credentials.UI.UserConsentVerifier]::RequestVerificationAsync('{prompt}')
+$getAwaiter = [System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object {{
+    $_.Name -eq 'GetAwaiter' -and $_.GetParameters().Length -eq 1 -and $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation`1'
+}}
+$typedMethod = $getAwaiter.MakeGenericMethod([Windows.Security.Credentials.UI.UserConsentVerificationResult])
+$awaiter = $typedMethod.Invoke($null, @($op))
+Write-Output $awaiter.GetResult().ToString()
+"""
+    encoded = base64.b64encode(ps_cmd.encode("utf-16le")).decode("ascii")
+    res = subprocess.run(
+        ["powershell", "-NoProfile", "-NonInteractive", "-EncodedCommand", encoded],
+        capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW
+    )
+    return res.stdout.strip() == "Verified"
