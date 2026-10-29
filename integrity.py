@@ -3,8 +3,9 @@ import os
 import sqlite3
 import subprocess
 import base64
+import sys
 
-lookup = "file_tracker.db"
+lookup = os.path.join(os.environ.get("LOCALAPPDATA", "."), "file_tracker.db")
 
 with sqlite3.connect(lookup) as conn:
     cursor = conn.cursor()
@@ -26,7 +27,13 @@ def hashed(file_path):
 
     return hasher.hexdigest()
 
-def integrityCheck(file_path,expectedHash ):
+def integrityCheck(file_path):
+
+    with sqlite3.connect(lookup) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT sha256_hash FROM file_manifest WHERE file_path = ?", (file_path))
+        row = cursor.fetchone()
+    expectedHash = row[0]
     print("File Secure") if hashed(file_path) == expectedHash else print ("File Integrity is compromised")
 
 def registerFile(file_path):
@@ -44,7 +51,7 @@ def registerFile(file_path):
             conn.commit()
 
 def FilePath(file):
-    file_path = file if os.path.isabs(file) else os.path.abspath(file) #alternative: path().resolve()
+    file_path = file if os.path.isabs(file) else os.path.abspath(file)
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"The file '{file_path}' could not be found.")
     
@@ -68,3 +75,23 @@ Write-Output $awaiter.GetResult().ToString()
         capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW
     )
     return res.stdout.strip() == "Verified"
+
+if __name__ == "__main__":
+
+    if len(sys.argv) > 2:
+        action = sys.argv[1]
+        raw_file = sys.argv[2]
+    elif len(sys.argv) == 2:
+        action = "--check"
+        raw_file = sys.argv[1]
+
+    try:
+        file_path = FilePath(raw_file)
+    except FileNotFoundError as err:
+        print(f"[Error] {err}")
+        sys.exit(1)
+
+    if action == "--register":
+        registerFile(file_path)
+    else:
+        integrityCheck(file_path)
