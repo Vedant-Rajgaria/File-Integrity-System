@@ -37,11 +37,14 @@ def integrityCheck(file_path):
         row = cursor.fetchone()
     if row:
         expectedHash = row[0]
-        print("File Secure") if hashed(file_path) == expectedHash else print ("File Integrity is compromised")
+        if hashed(file_path) == expectedHash:
+            messagebox.showinfo("File is Secure")
+        else:
+            messagebox.showerror("File Integrity has compromised!")
     else:
         root = tk.Tk()
         root.withdraw()
-        root.attributes("topmost", True)
+        root.attributes("-topmost", True)
         if messagebox.askyesno("Untracked File", f"'{os.path.basename(file_path)}' is not in the database.\n\nWould you like to register it now?"):
             registerFile(file_path)
 
@@ -93,6 +96,9 @@ if __name__ == "__main__":
     elif len(sys.argv) == 2:
         action = "--check"
         raw_file = sys.argv[1]
+    else:
+        action = "--check"
+        raw_file = input()
 
     try:
         file_path = FilePath(raw_file)
