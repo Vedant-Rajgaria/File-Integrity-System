@@ -4,8 +4,10 @@ import sqlite3
 import subprocess
 import base64
 import sys
+import tkinter as tk
+from tkinter import messagebox
 
-lookup = os.path.join(os.environ.get("LOCALAPPDATA", "."), "file_tracker.db")
+lookup = os.path.join(os.path.dirname(os.path.abspath(__file__)), "file_tracker.db")
 
 with sqlite3.connect(lookup) as conn:
     cursor = conn.cursor()
@@ -31,10 +33,17 @@ def integrityCheck(file_path):
 
     with sqlite3.connect(lookup) as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT sha256_hash FROM file_manifest WHERE file_path = ?", (file_path))
+        cursor.execute("SELECT sha256_hash FROM file_manifest WHERE file_path = ?", (file_path,))
         row = cursor.fetchone()
-    expectedHash = row[0]
-    print("File Secure") if hashed(file_path) == expectedHash else print ("File Integrity is compromised")
+    if row:
+        expectedHash = row[0]
+        print("File Secure") if hashed(file_path) == expectedHash else print ("File Integrity is compromised")
+    else:
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("topmost", True)
+        if messagebox.askyesno("Untracked File", f"'{os.path.basename(file_path)}' is not in the database.\n\nWould you like to register it now?"):
+            registerFile(file_path)
 
 def registerFile(file_path):
 
