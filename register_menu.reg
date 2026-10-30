@@ -1,0 +1,20 @@
+Windows Registry Editor Version 5.00
+
+; Creates the parent cascading menu "File Integrity"
+[HKEY_CURRENT_USER\Software\Classes\*\shell\FileIntegrity]
+"MUIVerb"="File Integrity"
+"SubCommands"=""
+
+; Sub-item 1: Check for Tampering
+[HKEY_CURRENT_USER\Software\Classes\*\shell\FileIntegrity\shell\1_Check]
+@="Check for Tampering"
+
+[HKEY_CURRENT_USER\Software\Classes\*\shell\FileIntegrity\shell\1_Check\command]
+@="\"C:\\Users\\Vedant\\AppData\\Local\\Programs\\Python\\Python314\\pythonw.exe\" \"C:\\Users\\Vedant\\Desktop\\Projects\\File Modification Detector\\integrity.py\" --check \"%1\""
+
+; Sub-item 2: Update Baseline
+[HKEY_CURRENT_USER\Software\Classes\*\shell\FileIntegrity\shell\2_Register]
+@="Update Baseline (Requires Hello)"
+
+[HKEY_CURRENT_USER\Software\Classes\*\shell\FileIntegrity\shell\2_Register\command]
+@="\"C:\\Users\\Vedant\\AppData\\Local\\Programs\\Python\\Python314\\pythonw.exe\" \"C:\\Users\\Vedant\\Desktop\\Projects\\File Modification Detector\\integrity.py\" --register \"%1\""
